@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claude · Peak Hours</title>
+<meta name="description" content="Claude peak hours counter (America/Los_Angeles, Mon–Fri 11:00–17:00)">
+<meta name="theme-color" content="#100e0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%23d97757'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#100e0c; --line:#2e2822; --txt:#f3ede5; --dim:#a1968a;
+    --peak:#e0805c; --off:#6cbd8f; --accent:#d97757;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100dvh;
+    background:var(--bg);
+    background-image:radial-gradient(900px 480px at 50% -12%, #2b231b 0%, transparent 70%);
+    color:var(--txt);
+    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:18px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .card{
+    width:100%;max-width:440px;
+    background:linear-gradient(180deg,#1c1916,#161311);
+    border:1px solid var(--line);border-radius:22px;
+    padding:20px 20px 16px;
+    box-shadow:0 40px 80px -40px #000, inset 0 1px 0 #ffffff08;
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-size:12.5px;letter-spacing:.09em;
+         text-transform:uppercase;color:var(--dim);font-weight:600}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
+              box-shadow:0 0 12px var(--accent)}
+
+  .status{margin-top:18px;text-align:center}
+  .pill{display:inline-block;padding:5px 12px;border-radius:999px;font-size:11.5px;font-weight:700;
+        letter-spacing:.11em;border:1px solid transparent;transition:.3s}
+  .pill.on{color:#ffd9c9;background:#3a1f16;border-color:#5c3122}
+  .pill.off{color:#c9f0da;background:#16301f;border-color:#245036}
+  .countdown{font-size:clamp(38px,13vw,52px);font-weight:700;letter-spacing:-.02em;
+             font-variant-numeric:tabular-nums;margin:10px 0 2px;line-height:1.05}
+  .label{color:var(--dim);font-size:13.5px}
+  .next{margin-top:7px;font-size:13px;color:#cfc4b6}
+  .next b{color:var(--txt);font-weight:600}
+
+  .bar{margin-top:14px;height:6px;border-radius:99px;background:#2a241f;overflow:hidden}
+  .bar-fill{height:100%;width:0;border-radius:99px;background:var(--off);
+            transition:width .5s linear, background .3s}
+
+  .daybar{margin-top:12px;position:relative;height:20px;border-radius:8px;
+          background:#211d19;border:1px solid var(--line);overflow:hidden}
+  .daybar .zone{position:absolute;top:0;bottom:0;left:45.833%;width:25%;
+                background:linear-gradient(180deg,#e0805c55,#e0805c1a);
+                border-left:1px solid #e0805c66;border-right:1px solid #e0805c66}
+  .daybar .marker{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;
+                  box-shadow:0 0 8px #fff;border-radius:2px;transition:left .5s linear}
+  .daybar-legend{display:flex;justify-content:space-between;font-size:10px;color:#6b6058;margin-top:4px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+  .cell{background:#1b1815;border:1px solid var(--line);border-radius:12px;padding:9px 11px}
+  .cell.wide{grid-column:span 2}
+  .cell span{display:block;font-size:10.5px;color:var(--dim);letter-spacing:.05em;text-transform:uppercase}
+  .cell strong{display:block;font-size:15px;margin-top:3px;font-variant-numeric:tabular-nums;font-weight:600}
+
+  .notif{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+  .notif h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+  .row{display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;font-size:14.5px}
+  .row input{appearance:none;-webkit-appearance:none;width:40px;height:23px;border-radius:99px;
+             background:#2c2723;border:1px solid #3a332c;position:relative;flex:none;
+             cursor:pointer;transition:.2s;margin:0}
+  .row input::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;
+                    border-radius:50%;background:#8c8177;transition:.2s}
+  .row input:checked{background:#5c3122;border-color:#7d4229}
+  .row input:checked::after{left:19px;background:var(--accent)}
+  .row span b{font-weight:700}
+  .actions{display:flex;gap:8px;margin-top:12px}
+  .btn{flex:1;padding:10px 14px;border-radius:11px;border:1px solid var(--line);
+       background:#221e1a;color:var(--txt);font:inherit;font-size:13.5px;font-weight:600;
+       cursor:pointer;transition:.15s}
+  .btn:hover{background:#2a2521}
+  .btn:active{transform:translateY(1px)}
+</style>
+</head>
+<body>
+
+<main class="card">
+  <div class="brand"><span class="dot"></span> Claude · Peak Hours</div>
+
+  <section class="status">
+    <div id="pill" class="pill off">CALCULATING…</div>
+    <div id="countdown" class="countdown">--:--:--</div>
+    <div id="label" class="label">—</div>
+    <div class="next" id="next"></div>
+
+    <div class="bar"><div id="barFill" class="bar-fill"></div></div>
+
+    <div class="daybar">
+      <div class="zone"></div>
+      <div class="marker" id="dayMarker" style="left:0%"></div>
+    </div>
+    <div class="daybar-legend"><span>00:00</span><span>12:00</span><span>24:00 PT</span></div>
+  </section>
+
+  <section class="grid">
+    <div class="cell"><span>Your local time</span><strong id="localClock">--:--:--</strong></div>
+    <div class="cell"><span>Next change</span><strong id="nextAt">--</strong></div>
+    <div class="cell wide"><span>Peak window</span><strong>Mon–Fri · 11:00–17:00 (PT)</strong></div>
+  </section>
+
+  <section class="notif">
+    <h2>Notifications</h2>
+    <label class="row"><input type="checkbox" id="nStart"><span>When peak hours <b>start</b></span></label>
+    <label class="row"><input type="checkbox" id="nEnd"><span>When peak hours <b>end</b></span></label>
+    <div class="actions">
+      <button class="btn" id="testBtn">Send test notification</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const TZ         = 'America/Los_Angeles';
+  const PEAK_START = 11 * 60;
+  const PEAK_END   = 17 * 60;
+  const ICON       = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%23d97757'/%3E%3C/svg%3E";
+
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ, hourCycle: 'h23',
+    weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+  const WD = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+
+  function laParts(date = new Date()) {
+    const o = {};
+    for (const p of fmt.formatToParts(date)) if (p.type !== 'literal') o[p.type] = p.value;
+    return { y:+o.year, mo:+o.month, d:+o.day, h:+o.hour, mi:+o.minute, s:+o.second, wd:WD[o.weekday] };
+  }
+  function laOffset(ts) {
+    const p = laParts(new Date(ts));
+    return Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s) - Math.floor(ts / 1000) * 1000;
+  }
+  function laWall(y, mo, d, h, mi) {
+    const base = Date.UTC(y, mo - 1, d, h, mi, 0);
+    let ts = base;
+    for (let i = 0; i < 3; i++) {
+      const next = base - laOffset(ts);
+      if (next === ts) break;
+      ts = next;
+    }
+    return ts;
+  }
+  function getState(nowMs = Date.now()) {
+    const p = laParts(new Date(nowMs));
+    const minutes = p.h * 60 + p.mi + p.s / 60;
+    const weekday = p.wd >= 1 && p.wd <= 5;
+    const peak = weekday && minutes >= PEAK_START && minutes < PEAK_END;
+
+    let nextTs, nextIsStart;
+    if (peak) {
+      nextTs = laWall(p.y, p.mo, p.d, 17, 0);
+      nextIsStart = false;
+    } else if (weekday && minutes < PEAK_START) {
+      nextTs = laWall(p.y, p.mo, p.d, 11, 0);
+      nextIsStart = true;
+    } else {
+      const d = new Date(Date.UTC(p.y, p.mo - 1, p.d));
+      do { d.setUTCDate(d.getUTCDate() + 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+      nextTs = laWall(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 11, 0);
+      nextIsStart = true;
+    }
+
+    let prevTs;
+    if (peak) {
+      prevTs = laWall(p.y, p.mo, p.d, 11, 0);
+    } else if (weekday && minutes >= PEAK_END) {
+      prevTs = laWall(p.y, p.mo, p.d, 17, 0);
+    } else {
+      const d = new Date(Date.UTC(p.y, p.mo - 1, p.d));
+      do { d.setUTCDate(d.getUTCDate() - 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+      prevTs = laWall(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 17, 0);
+    }
+
+    return { peak, nextTs, nextIsStart, prevTs, minutes, p, weekday };
+  }
+  const $ = id => document.getElementById(id);
+  const pill = $('pill'), countdown = $('countdown'), label = $('label'), nextEl = $('next');
+  const barFill = $('barFill'), dayMarker = $('dayMarker');
+  const localClock = $('localClock'), nextAt = $('nextAt');
+  const nStart = $('nStart'), nEnd = $('nEnd');
+  const pad = n => String(n).padStart(2, '0');
+
+  function fmtDur(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return d > 0
+      ? `${d}d ${pad(h)}:${pad(m)}:${pad(sec)}`
+      : `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  }
+  const cfg = Object.assign(
+    { notifyStart: false, notifyEnd: false },
+    JSON.parse(localStorage.getItem('cfg') || '{}')
+  );
+  const saveCfg = () => localStorage.setItem('cfg', JSON.stringify(cfg));
+
+  nStart.checked = cfg.notifyStart;
+  nEnd.checked   = cfg.notifyEnd;
+
+  nStart.addEventListener('change', () => onToggle('notifyStart', nStart.checked));
+  nEnd.addEventListener('change',   () => onToggle('notifyEnd',   nEnd.checked));
+
+  async function onToggle(key, value) {
+    if (value && 'Notification' in window && Notification.permission !== 'granted') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        if (key === 'notifyStart') nStart.checked = false;
+        if (key === 'notifyEnd')   nEnd.checked = false;
+        cfg[key] = false;
+        saveCfg();
+        return;
+      }
+    }
+    cfg[key] = value;
+    saveCfg();
+  }
+
+  function notify(title, body, tag) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      new Notification(title, {
+        body, tag, renotify: true,
+        icon: ICON, badge: ICON
+      });
+    } catch (e) { console.warn(e); }
+  }
+
+  let lastPeak = null;
+
+  function tick() {
+    const now = Date.now();
+    const st = getState(now);
+
+    pill.textContent = st.peak ? 'PEAK HOURS' : 'OFF-PEAK';
+    pill.className = 'pill ' + (st.peak ? 'on' : 'off');
+
+    countdown.textContent = fmtDur(st.nextTs - now);
+    label.textContent = st.peak
+      ? 'until peak hours end'
+      : 'until peak hours start';
+
+    const nd = new Date(st.nextTs);
+    nextEl.innerHTML =
+      (st.nextIsStart ? 'Starts ' : 'Ends ') +
+      '<b>' + nd.toLocaleString([], { weekday:'long', hour:'2-digit', minute:'2-digit' }) + '</b>' +
+      ' (your time)';
+
+    const total = Math.max(1, st.nextTs - st.prevTs);
+    const pct = Math.min(100, Math.max(0, ((now - st.prevTs) / total) * 100));
+    barFill.style.width = pct.toFixed(2) + '%';
+    barFill.style.background = st.peak ? 'var(--peak)' : 'var(--off)';
+
+    const loc = new Date();
+    localClock.textContent = pad(loc.getHours()) + ':' + pad(loc.getMinutes()) + ':' + pad(loc.getSeconds());
+    nextAt.textContent = nd.toLocaleString([], { weekday:'short', hour:'2-digit', minute:'2-digit' });
+
+    dayMarker.style.left = ((st.minutes / 1440) * 100).toFixed(2) + '%';
+
+    if (lastPeak !== null && lastPeak !== st.peak) {
+      const key = (st.peak ? 'start' : 'end') + ':' + st.prevTs;
+      if (localStorage.getItem('lastNotif') !== key) {
+        if (st.peak && cfg.notifyStart) {
+          notify('🔴 Peak hours started',
+                 'You are now inside Claude\'s peak window (until 17:00 PT).',
+                 'peak-start');
+          localStorage.setItem('lastNotif', key);
+        } else if (!st.peak && cfg.notifyEnd) {
+          notify('🟢 Peak hours ended',
+                 'Claude is now outside peak hours.',
+                 'peak-end');
+          localStorage.setItem('lastNotif', key);
+        }
+      }
+    }
+    lastPeak = st.peak;
+  }
+  $('testBtn').addEventListener('click', async () => {
+    if (!('Notification' in window)) return alert('Your browser does not support notifications.');
+    if (Notification.permission !== 'granted') {
+      const p = await Notification.requestPermission();
+      if (p !== 'granted') return;
+    }
+    const st = getState();
+    notify('🔔 Test · Claude Peak Hours',
+           st.peak ? 'You are currently inside PEAK HOURS.' : 'You are currently OFF-PEAK.',
+           'test');
+  });
+
+  tick();
+  setInterval(tick, 500);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) tick();
+  });
+})();
+</script>
+</body>
+</html>
