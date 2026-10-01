@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Claude · Peak Hours</title>
-<meta name="description" content="Claude peak hours counter (America/Los_Angeles, Mon–Fri 11:00–17:00)">
+<meta name="description" content="Claude peak hours counter">
 <meta name="theme-color" content="#100e0c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%23d97757'/%3E%3C/svg%3E">
 <style>
@@ -123,8 +123,8 @@
 (() => {
   'use strict';
   const TZ         = 'America/Los_Angeles';
-  const PEAK_START = 11 * 60;
-  const PEAK_END   = 17 * 60;
+  const PEAK_START = 5 * 60;
+  const PEAK_END   = 11 * 60;
   const ICON       = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%23d97757'/%3E%3C/svg%3E";
 
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -161,36 +161,44 @@
 
     let nextTs, nextIsStart;
     if (peak) {
-      nextTs = laWall(p.y, p.mo, p.d, 17, 0);
+      nextTs = laWall(p.y, p.mo, p.d, 11, 0);
       nextIsStart = false;
     } else if (weekday && minutes < PEAK_START) {
-      nextTs = laWall(p.y, p.mo, p.d, 11, 0);
+      nextTs = laWall(p.y, p.mo, p.d, 5, 0);
       nextIsStart = true;
     } else {
-      const d = new Date(Date.UTC(p.y, p.mo - 1, p.d));
-      do { d.setUTCDate(d.getUTCDate() + 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
-      nextTs = laWall(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 11, 0);
+      let targetD = new Date(laWall(p.y, p.mo, p.d, 5, 0));
+      do { 
+        targetD.setDate(targetD.getDate() + 1); 
+      } while (targetD.getDay() === 0 || targetD.getDay() === 6);
+      
+      const nextP = laParts(targetD);
+      nextTs = laWall(nextP.y, nextP.mo, nextP.d, 5, 0);
       nextIsStart = true;
     }
 
     let prevTs;
     if (peak) {
-      prevTs = laWall(p.y, p.mo, p.d, 11, 0);
+      prevTs = laWall(p.y, p.mo, p.d, 5, 0);
     } else if (weekday && minutes >= PEAK_END) {
-      prevTs = laWall(p.y, p.mo, p.d, 17, 0);
+      prevTs = laWall(p.y, p.mo, p.d, 11, 0);
     } else {
-      const d = new Date(Date.UTC(p.y, p.mo - 1, p.d));
-      do { d.setUTCDate(d.getUTCDate() - 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
-      prevTs = laWall(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 17, 0);
+      let targetD = new Date(laWall(p.y, p.mo, p.d, 11, 0));
+      do { 
+        targetD.setDate(targetD.getDate() - 1); 
+      } while (targetD.getDay() === 0 || targetD.getDay() === 6);
+      
+      const prevP = laParts(targetD);
+      prevTs = laWall(prevP.y, prevP.mo, prevP.d, 11, 0);
     }
 
     return { peak, nextTs, nextIsStart, prevTs, minutes, p, weekday };
   }
-  const $ = id => document.getElementById(id);
-  const pill = $('pill'), countdown = $('countdown'), label = $('label'), nextEl = $('next');
-  const barFill = $('barFill'), dayMarker = $('dayMarker');
-  const localClock = $('localClock'), nextAt = $('nextAt');
-  const nStart = $('nStart'), nEnd = $('nEnd');
+  const \$ = id => document.getElementById(id);
+  const pill = ('pill'), countdown = ('countdown'), label = ('label'), nextEl = ('next');
+  const barFill = ('barFill'), dayMarker = ('dayMarker');
+  const localClock = ('localClock'), nextAt = ('nextAt');
+  const nStart = ('nStart'), nEnd = ('nEnd');
   const pad = n => String(n).padStart(2, '0');
 
   function fmtDur(ms) {
@@ -209,18 +217,18 @@
   );
   const saveCfg = () => localStorage.setItem('cfg', JSON.stringify(cfg));
 
-  nStart.checked = cfg.notifyStart;
-  nEnd.checked   = cfg.notifyEnd;
+  if (nStart) nStart.checked = cfg.notifyStart;
+  if (nEnd)   nEnd.checked   = cfg.notifyEnd;
 
-  nStart.addEventListener('change', () => onToggle('notifyStart', nStart.checked));
-  nEnd.addEventListener('change',   () => onToggle('notifyEnd',   nEnd.checked));
+  if (nStart) nStart.addEventListener('change', () => onToggle('notifyStart', nStart.checked));
+  if (nEnd)   nEnd.addEventListener('change',   () => onToggle('notifyEnd',   nEnd.checked));
 
   async function onToggle(key, value) {
     if (value && 'Notification' in window && Notification.permission !== 'granted') {
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') {
-        if (key === 'notifyStart') nStart.checked = false;
-        if (key === 'notifyEnd')   nEnd.checked = false;
+        if (key === 'notifyStart' && nStart) nStart.checked = false;
+        if (key === 'notifyEnd' && nEnd)   nEnd.checked = false;
         cfg[key] = false;
         saveCfg();
         return;
@@ -246,37 +254,47 @@
     const now = Date.now();
     const st = getState(now);
 
-    pill.textContent = st.peak ? 'PEAK HOURS' : 'OFF-PEAK';
-    pill.className = 'pill ' + (st.peak ? 'on' : 'off');
+    if (pill) {
+      pill.textContent = st.peak ? 'PEAK HOURS' : 'OFF-PEAK';
+      pill.className = 'pill ' + (st.peak ? 'on' : 'off');
+    }
 
-    countdown.textContent = fmtDur(st.nextTs - now);
-    label.textContent = st.peak
-      ? 'until peak hours end'
-      : 'until peak hours start';
+    if (countdown) countdown.textContent = fmtDur(st.nextTs - now);
+    if (label) {
+      label.textContent = st.peak
+        ? 'until peak hours end'
+        : 'until peak hours start';
+    }
 
     const nd = new Date(st.nextTs);
-    nextEl.innerHTML =
-      (st.nextIsStart ? 'Starts ' : 'Ends ') +
-      '<b>' + nd.toLocaleString([], { weekday:'long', hour:'2-digit', minute:'2-digit' }) + '</b>' +
-      ' (your time)';
+    if (nextEl) {
+      nextEl.innerHTML =
+        (st.nextIsStart ? 'Starts ' : 'Ends ') +
+        '<b>' + nd.toLocaleString([], { weekday:'long', hour:'2-digit', minute:'2-digit' }) + '</b>' +
+        ' (your time)';
+    }
 
-    const total = Math.max(1, st.nextTs - st.prevTs);
-    const pct = Math.min(100, Math.max(0, ((now - st.prevTs) / total) * 100));
-    barFill.style.width = pct.toFixed(2) + '%';
-    barFill.style.background = st.peak ? 'var(--peak)' : 'var(--off)';
+    if (barFill) {
+      const total = Math.max(1, st.nextTs - st.prevTs);
+      const pct = Math.min(100, Math.max(0, ((now - st.prevTs) / total) * 100));
+      barFill.style.width = pct.toFixed(2) + '%';
+      barFill.style.background = st.peak ? 'var(--peak)' : 'var(--off)';
+    }
 
-    const loc = new Date();
-    localClock.textContent = pad(loc.getHours()) + ':' + pad(loc.getMinutes()) + ':' + pad(loc.getSeconds());
-    nextAt.textContent = nd.toLocaleString([], { weekday:'short', hour:'2-digit', minute:'2-digit' });
+    if (localClock) {
+      const loc = new Date();
+      localClock.textContent = pad(loc.getHours()) + ':' + pad(loc.getMinutes()) + ':' + pad(loc.getSeconds());
+    }
+    if (nextAt) nextAt.textContent = nd.toLocaleString([], { weekday:'short', hour:'2-digit', minute:'2-digit' });
 
-    dayMarker.style.left = ((st.minutes / 1440) * 100).toFixed(2) + '%';
+    if (dayMarker) dayMarker.style.left = ((st.minutes / 1440) * 100).toFixed(2) + '%';
 
     if (lastPeak !== null && lastPeak !== st.peak) {
       const key = (st.peak ? 'start' : 'end') + ':' + st.prevTs;
       if (localStorage.getItem('lastNotif') !== key) {
         if (st.peak && cfg.notifyStart) {
           notify('🔴 Peak hours started',
-                 'You are now inside Claude\'s peak window (until 17:00 PT).',
+                 'You are now inside Claude\'s peak window (until 11:00 PT).',
                  'peak-start');
           localStorage.setItem('lastNotif', key);
         } else if (!st.peak && cfg.notifyEnd) {
@@ -289,17 +307,19 @@
     }
     lastPeak = st.peak;
   }
-  $('testBtn').addEventListener('click', async () => {
-    if (!('Notification' in window)) return alert('Your browser does not support notifications.');
-    if (Notification.permission !== 'granted') {
-      const p = await Notification.requestPermission();
-      if (p !== 'granted') return;
-    }
-    const st = getState();
-    notify('🔔 Test · Claude Peak Hours',
-           st.peak ? 'You are currently inside PEAK HOURS.' : 'You are currently OFF-PEAK.',
-           'test');
-  });
+  
+  if (\(('testBtn')) {\)('testBtn').addEventListener('click', async () => {
+      if (!('Notification' in window)) return alert('Your browser does not support notifications.');
+      if (Notification.permission !== 'granted') {
+        const p = await Notification.requestPermission();
+        if (p !== 'granted') return;
+      }
+      const st = getState();
+      notify('🔔 Test · Claude Peak Hours',
+             st.peak ? 'You are currently inside PEAK HOURS.' : 'You are currently OFF-PEAK.',
+             'test');
+    });
+  }
 
   tick();
   setInterval(tick, 500);
