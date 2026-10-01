@@ -125,7 +125,7 @@
   const TZ         = 'America/Los_Angeles';
   const PEAK_START = 5 * 60;
   const PEAK_END   = 11 * 60;
-  const ICON       = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%23d97757'/%3E%3C/svg%3E";
+  const ICON       = "data:image/svg+xml,%3Csvg xmlns='http://w3.org' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%23d97757'/%3E%3C/svg%3E";
 
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone: TZ, hourCycle: 'h23',
@@ -308,7 +308,9 @@
     lastPeak = st.peak;
   }
   
-  if (\(('testBtn')) {\)('testBtn').addEventListener('click', async () => {
+  const testBtn = \$('testBtn');
+  if (testBtn) {
+    testBtn.addEventListener('click', async () => {
       if (!('Notification' in window)) return alert('Your browser does not support notifications.');
       if (Notification.permission !== 'granted') {
         const p = await Notification.requestPermission();
@@ -328,6 +330,7 @@
     if (!document.hidden) tick();
   });
 })();
+
 </script>
 </body>
 </html>
