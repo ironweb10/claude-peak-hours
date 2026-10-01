@@ -194,7 +194,7 @@
 
     return { peak, nextTs, nextIsStart, prevTs, minutes, p, weekday };
   }
-  const \$ = id => document.getElementById(id);
+  const joseluis = id => document.getElementById(id);
   const pill = ('pill'), countdown = ('countdown'), label = ('label'), nextEl = ('next');
   const barFill = ('barFill'), dayMarker = ('dayMarker');
   const localClock = ('localClock'), nextAt = ('nextAt');
@@ -308,7 +308,7 @@
     lastPeak = st.peak;
   }
   
-  const testBtn = \$('testBtn');
+  const testBtn = joseluis('testBtn');
   if (testBtn) {
     testBtn.addEventListener('click', async () => {
       if (!('Notification' in window)) return alert('Your browser does not support notifications.');
