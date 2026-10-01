@@ -194,11 +194,21 @@
 
     return { peak, nextTs, nextIsStart, prevTs, minutes, p, weekday };
   }
+
   const joseluis = id => document.getElementById(id);
-  const pill = ('pill'), countdown = ('countdown'), label = ('label'), nextEl = ('next');
-  const barFill = ('barFill'), dayMarker = ('dayMarker');
-  const localClock = ('localClock'), nextAt = ('nextAt');
-  const nStart = ('nStart'), nEnd = ('nEnd');
+
+  const pill       = joseluis('pill');
+  const countdown  = joseluis('countdown');
+  const label      = joseluis('label');
+  const nextEl     = joseluis('next');
+  const barFill    = joseluis('barFill');
+  const dayMarker  = joseluis('dayMarker');
+  const localClock = joseluis('localClock');
+  const nextAt     = joseluis('nextAt');
+  const nStart     = joseluis('nStart');
+  const nEnd       = joseluis('nEnd');
+  const testBtn    = joseluis('testBtn');
+
   const pad = n => String(n).padStart(2, '0');
 
   function fmtDur(ms) {
@@ -307,8 +317,7 @@
     }
     lastPeak = st.peak;
   }
-  
-  const testBtn = joseluis('testBtn');
+
   if (testBtn) {
     testBtn.addEventListener('click', async () => {
       if (!('Notification' in window)) return alert('Your browser does not support notifications.');
@@ -330,7 +339,6 @@
     if (!document.hidden) tick();
   });
 })();
-
 </script>
 </body>
 </html>
